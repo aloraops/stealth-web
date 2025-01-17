@@ -206,12 +206,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleSelectionEnd(e) {
         if (isSelecting) {
             isSelecting = false;
-            updateSelection(true);
             
-            // Keep the selection visible on mobile after touch end
+            // Keep the selection visible and complete on mobile
             if (isMobile) {
                 rangeHighlight.style.opacity = '1';
-                rangeHighlight.classList.add('selection-complete');
+                rangeHighlight.classList.add('selection-complete', 'multiple-cells');
+                // Ensure the handle is visible
+                rangeHighlight.classList.add('show-handle');
+            } else {
+                updateSelection(true);
             }
             
             // Prevent any default behavior
@@ -442,6 +445,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 moveSelection(e.key);
             }
         }
+    });
+
+    // Add this after DOM content loaded
+    document.querySelector('.refresh-icon').addEventListener('click', () => {
+        window.location.reload();
     });
 });
 

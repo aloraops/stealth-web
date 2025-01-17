@@ -282,6 +282,16 @@ a:hover {
         pointer-events: none;
         -webkit-tap-highlight-color: transparent;
     }
+
+    .range-highlight.selection-complete::after {
+        opacity: 1 !important;
+        width: 8px;
+        height: 8px;
+    }
+
+    .range-highlight.show-handle::after {
+        opacity: 1 !important;
+    }
 }
 
 .cursor-trail {
@@ -379,4 +389,53 @@ h1, h2, .logo-text {
     padding: 2px 6px;
     border-radius: 4px;
     overflow: hidden;
+}
+
+.refresh-icon {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    cursor: pointer;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.9);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform-origin: center;
+    pointer-events: all;
+    border: 1px solid var(--primary-color);
+    padding: 0;
+}
+
+.refresh-icon i {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    transition: transform 0.8s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+.refresh-icon:hover i {
+    transform: rotate(360deg);
+}
+
+.refresh-icon:hover {
+    transform: none;
+}
+
+@media (max-width: 768px) {
+    .refresh-icon {
+        top: 10px;
+        left: 10px;
+        width: 35px;
+        height: 35px;
+    }
 } 
