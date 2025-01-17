@@ -208,6 +208,12 @@ document.addEventListener('DOMContentLoaded', function() {
             isSelecting = false;
             updateSelection(true);
             
+            // Keep the selection visible on mobile after touch end
+            if (isMobile) {
+                rangeHighlight.style.opacity = '1';
+                rangeHighlight.classList.add('selection-complete');
+            }
+            
             // Prevent any default behavior
             if (e && e.type && e.type.startsWith('touch')) {
                 e.preventDefault();
@@ -230,6 +236,13 @@ document.addEventListener('DOMContentLoaded', function() {
         rangeHighlight.style.opacity = '0';
         rangeHighlight.classList.remove('selection-complete');
         rangeHighlight.classList.remove('multiple-cells');
+        
+        // Hide any visible sentences
+        if (ENABLE_EASTER_EGGS) {
+            sentenceLocations.forEach(({ element }) => {
+                element.style.opacity = '0';
+            });
+        }
     }
 
     document.addEventListener('keydown', function(e) {
