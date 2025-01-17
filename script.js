@@ -1,45 +1,40 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Add smooth scroll behavior
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            document.querySelector(this.getAttribute('href')).scrollIntoView({
-                behavior: 'smooth'
-            });
+    // Add cursor trail flag
+    const ENABLE_CURSOR_TRAIL = false; // Set to true to enable cursor trail
+
+    // Cursor trail code
+    if (ENABLE_CURSOR_TRAIL) {
+        const cursor = document.createElement('div');
+        cursor.className = 'cursor-trail';
+        document.body.appendChild(cursor);
+
+        let cursorX = 0;
+        let cursorY = 0;
+        let targetX = 0;
+        let targetY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            targetX = e.clientX;
+            targetY = e.clientY;
         });
-    });
 
-    // Add cursor trail effect
-    const cursor = document.createElement('div');
-    cursor.className = 'cursor-trail';
-    document.body.appendChild(cursor);
+        function updateCursor() {
+            const dx = targetX - cursorX;
+            const dy = targetY - cursorY;
+            
+            cursorX += dx * 0.2;
+            cursorY += dy * 0.2;
+            
+            cursor.style.left = `${cursorX}px`;
+            cursor.style.top = `${cursorY}px`;
+            
+            requestAnimationFrame(updateCursor);
+        }
 
-    let cursorX = 0;
-    let cursorY = 0;
-    let targetX = 0;
-    let targetY = 0;
-
-    document.addEventListener('mousemove', (e) => {
-        targetX = e.clientX;
-        targetY = e.clientY;
-    });
-
-    function updateCursor() {
-        const dx = targetX - cursorX;
-        const dy = targetY - cursorY;
-        
-        cursorX += dx * 0.2;
-        cursorY += dy * 0.2;
-        
-        cursor.style.left = `${cursorX}px`;
-        cursor.style.top = `${cursorY}px`;
-        
-        requestAnimationFrame(updateCursor);
+        updateCursor();
     }
 
-    updateCursor();
-
-    // Add Excel-like cell selection
+    // Fix cell selection for mobile
     const gridBackground = document.querySelector('.grid-background');
     let cellHighlight = document.createElement('div');
     let rangeHighlight = document.createElement('div');
@@ -54,10 +49,25 @@ document.addEventListener('DOMContentLoaded', function() {
     let isSelecting = false;
     let startCell = { x: 0, y: 0 };
     let currentCell = { x: 0, y: 0 };
+    let isMobile = false;
+
+    // Detect mobile device
+    function updateIsMobile() {
+        isMobile = window.matchMedia('(max-width: 768px)').matches;
+    }
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
 
     function getCellCoordinates(e) {
-        const x = e.clientX;
-        const y = e.clientY;
+        // Get touch or mouse coordinates
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        // Get grid position
+        const rect = gridBackground.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
         return {
             x: Math.floor(x / CELL_WIDTH) * CELL_WIDTH,
             y: Math.floor(y / CELL_HEIGHT) * CELL_HEIGHT
@@ -65,6 +75,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateSelection(isComplete = false) {
+        // Don't show range highlight on mobile for single taps
+        if (isMobile && !isSelecting) {
+            rangeHighlight.style.opacity = '0';
+            return;
+        }
+
         // Update initial cell highlight
         cellHighlight.style.left = startCell.x + 'px';
         cellHighlight.style.top = startCell.y + 'px';
@@ -100,31 +116,49 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`Selected range: ${startCol}${startRow}:${endCol}${endRow}`);
     }
 
-    gridBackground.addEventListener('mousedown', function(e) {
+    // Handle both mouse and touch events
+    gridBackground.addEventListener('mousedown', handleSelectionStart);
+    gridBackground.addEventListener('touchstart', handleSelectionStart);
+
+    document.addEventListener('mousemove', handleSelectionMove);
+    document.addEventListener('touchmove', handleSelectionMove);
+
+    document.addEventListener('mouseup', handleSelectionEnd);
+    document.addEventListener('touchend', handleSelectionEnd);
+
+    function handleSelectionStart(e) {
         if (e.target === gridBackground) {
             isSelecting = true;
             startCell = getCellCoordinates(e);
             currentCell = startCell;
-            // Remove selection-complete class when starting new selection
             rangeHighlight.classList.remove('selection-complete');
             updateSelection(false);
+            
+            // Prevent default touch behavior
+            if (e.type === 'touchstart') {
+                e.preventDefault();
+            }
         }
-    });
+    }
 
-    document.addEventListener('mousemove', function(e) {
+    function handleSelectionMove(e) {
         if (isSelecting) {
             currentCell = getCellCoordinates(e);
             updateSelection(false);
+            
+            // Prevent default touch behavior
+            if (e.type === 'touchmove') {
+                e.preventDefault();
+            }
         }
-    });
+    }
 
-    document.addEventListener('mouseup', function() {
+    function handleSelectionEnd() {
         if (isSelecting) {
             isSelecting = false;
-            // Add selection-complete class when finishing selection
             updateSelection(true);
         }
-    });
+    }
 
     // Hide highlights when clicking interactive elements
     document.querySelectorAll('.container a, .container button').forEach(element => {
