@@ -1,8 +1,29 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Add feature flags at the top
+    // Add feature flags and configuration at the top
     const ENABLE_CURSOR_TRAIL = false;
     const ENABLE_EASTER_EGGS = true;
-    const VISIBLE_SENTENCES = 4;  // Configure how many sentences to show
+    const MIN_SENTENCES = 3;
+    const MAX_SENTENCES = 5;
+    const SENTENCE_MARGIN = 30;
+    const CELL_WIDTH = 60;
+    const CELL_HEIGHT = 25;
+
+    // Calculate text lines to avoid
+    function getTextLines() {
+        const h1 = document.querySelector('.hero h1');
+        const subtitle = document.querySelector('.hero .subtitle');
+        const h1Rect = h1.getBoundingClientRect();
+        const subtitleRect = subtitle.getBoundingClientRect();
+        
+        const startLine = Math.floor(h1Rect.top / CELL_HEIGHT);
+        const endLine = Math.ceil(subtitleRect.bottom / CELL_HEIGHT);
+        
+        console.log(`Main text occupies lines ${startLine} to ${endLine}`);
+        return { startLine, endLine };
+    }
+
+    // Call this after DOM is loaded
+    const textLines = getTextLines();
 
     // Cursor trail code
     if (ENABLE_CURSOR_TRAIL) {
@@ -44,9 +65,6 @@ document.addEventListener('DOMContentLoaded', function() {
     rangeHighlight.className = 'range-highlight';
     document.body.appendChild(cellHighlight);
     document.body.appendChild(rangeHighlight);
-
-    const CELL_WIDTH = 60;
-    const CELL_HEIGHT = 25;
 
     let isSelecting = false;
     let startCell = { x: 0, y: 0 };
@@ -145,45 +163,56 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle both mouse and touch events
     gridBackground.addEventListener('mousedown', handleSelectionStart);
-    gridBackground.addEventListener('touchstart', handleSelectionStart);
+    gridBackground.addEventListener('touchstart', handleSelectionStart, { passive: false });
 
     document.addEventListener('mousemove', handleSelectionMove);
-    document.addEventListener('touchmove', handleSelectionMove);
+    document.addEventListener('touchmove', handleSelectionMove, { passive: false });
 
     document.addEventListener('mouseup', handleSelectionEnd);
-    document.addEventListener('touchend', handleSelectionEnd);
+    document.addEventListener('touchend', handleSelectionEnd, { passive: false });
+    document.addEventListener('touchcancel', handleSelectionEnd, { passive: false });
 
     function handleSelectionStart(e) {
         if (e.target === gridBackground) {
             isSelecting = true;
+            // Get coordinates whether it's touch or mouse event
             startCell = getCellCoordinates(e);
             currentCell = startCell;
             rangeHighlight.classList.remove('selection-complete');
             updateSelection(false);
             
-            // Prevent default touch behavior
+            // Prevent default touch behavior and scrolling
             if (e.type === 'touchstart') {
                 e.preventDefault();
+                e.stopPropagation();
             }
         }
     }
 
     function handleSelectionMove(e) {
         if (isSelecting) {
+            // Get coordinates whether it's touch or mouse event
             currentCell = getCellCoordinates(e);
             updateSelection(false);
             
-            // Prevent default touch behavior
+            // Prevent default touch behavior and scrolling
             if (e.type === 'touchmove') {
                 e.preventDefault();
+                e.stopPropagation();
             }
         }
     }
 
-    function handleSelectionEnd() {
+    function handleSelectionEnd(e) {
         if (isSelecting) {
             isSelecting = false;
             updateSelection(true);
+            
+            // Prevent any default behavior
+            if (e && e.type && e.type.startsWith('touch')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
         }
     }
 
@@ -218,6 +247,50 @@ document.addEventListener('DOMContentLoaded', function() {
     let hiddenSentences = [];
     let sentenceLocations = [];
 
+    // Add this before loadAndPlaceSentences function
+    let SAFETY_MARGIN = 50; // Make this variable instead of const
+
+    function isValidPosition(x, y, width) {
+        const mainContent = document.querySelector('.hero').getBoundingClientRect();
+        const contactBox = document.querySelector('.contact-button').getBoundingClientRect();
+
+        // Check window boundaries with reduced margin
+        if (x < SAFETY_MARGIN || 
+            x + width > window.innerWidth - SAFETY_MARGIN || 
+            y < SAFETY_MARGIN || 
+            y > window.innerHeight - SAFETY_MARGIN) {
+            return false;
+        }
+
+        // Check collision with main content
+        if (!(y + CELL_HEIGHT < mainContent.top - SAFETY_MARGIN || 
+            y > mainContent.bottom + SAFETY_MARGIN ||
+            x + width < mainContent.left - SAFETY_MARGIN || 
+            x > mainContent.right + SAFETY_MARGIN)) {
+            return false;
+        }
+
+        // Check collision with contact box
+        if (!(y + CELL_HEIGHT < contactBox.top - SAFETY_MARGIN || 
+            y > contactBox.bottom + SAFETY_MARGIN ||
+            x + width < contactBox.left - SAFETY_MARGIN || 
+            x > contactBox.right + SAFETY_MARGIN)) {
+            return false;
+        }
+
+        // Check collision with other sentences
+        for (const loc of sentenceLocations) {
+            if (!(y + CELL_HEIGHT < loc.position.y - SAFETY_MARGIN || 
+                y > loc.position.y + loc.height + SAFETY_MARGIN ||
+                x + width < loc.position.x - SAFETY_MARGIN || 
+                x > loc.position.x + loc.width + SAFETY_MARGIN)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     // Load and place sentences
     async function loadAndPlaceSentences() {
         if (!ENABLE_EASTER_EGGS) return;
@@ -229,76 +302,75 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Randomly select sentences
             const shuffled = data.sentences.sort(() => 0.5 - Math.random());
-            hiddenSentences = shuffled.slice(0, VISIBLE_SENTENCES);
+            const targetCount = Math.floor(Math.random() * (MAX_SENTENCES - MIN_SENTENCES + 1)) + MIN_SENTENCES;
+            hiddenSentences = shuffled.slice(0, targetCount);
             
             // Create sentence elements
-            const mainContent = document.querySelector('.hero').getBoundingClientRect();
-            const contactBox = document.querySelector('.contact-button').getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            const viewportWidth = window.innerWidth;
             
+            function isOverlapping(x, y, width, existingSentences) {
+                for (const loc of existingSentences) {
+                    if (!(y + CELL_HEIGHT + SENTENCE_MARGIN < loc.position.y || 
+                        y > loc.position.y + loc.height + SENTENCE_MARGIN ||
+                        x + width + SENTENCE_MARGIN < loc.position.x || 
+                        x > loc.position.x + loc.width + SENTENCE_MARGIN)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             hiddenSentences.forEach((sentence) => {
                 const sentenceEl = document.createElement('div');
                 sentenceEl.className = 'hidden-sentence';
                 sentenceEl.textContent = sentence;
                 document.body.appendChild(sentenceEl);
                 
-                // Calculate exact character width and cells needed
+                // Calculate exact width
                 const testEl = document.createElement('span');
                 testEl.className = 'hidden-sentence';
                 testEl.style.visibility = 'hidden';
                 testEl.textContent = sentence;
                 document.body.appendChild(testEl);
-                
                 const actualWidth = testEl.offsetWidth;
                 document.body.removeChild(testEl);
-                
-                const cellsNeeded = Math.ceil(actualWidth / CELL_WIDTH);
 
-                let validPosition = false;
-                let position;
+                let position = null;
                 let attempts = 0;
                 const maxAttempts = 100;
-                
-                while (!validPosition && attempts < maxAttempts) {
-                    attempts++;
-                    // Random position aligned to grid
-                    const x = Math.floor(Math.random() * (window.innerWidth / CELL_WIDTH)) * CELL_WIDTH;
-                    const y = Math.floor(Math.random() * (window.innerHeight / CELL_HEIGHT)) * CELL_HEIGHT;
+
+                while (!position && attempts < maxAttempts) {
+                    const x = Math.floor(Math.random() * (viewportWidth - actualWidth) / CELL_WIDTH) * CELL_WIDTH;
+                    const y = Math.floor(Math.random() * (viewportHeight - CELL_HEIGHT) / CELL_HEIGHT) * CELL_HEIGHT;
                     
-                    // Ensure the sentence doesn't overflow the window
-                    if (x + (cellsNeeded * CELL_WIDTH) > window.innerWidth) {
-                        continue;
+                    // Check if this position is in the text lines
+                    const currentLine = Math.floor(y / CELL_HEIGHT);
+                    if (currentLine >= textLines.startLine && currentLine <= textLines.endLine) {
+                        attempts++;
+                        continue; // Skip this position
                     }
                     
-                    // Check if position is outside main content and contact box areas
-                    if (!(y >= mainContent.top && y <= mainContent.bottom && 
-                        x >= mainContent.left && x <= mainContent.right) &&
-                        !(y >= contactBox.top && y <= contactBox.bottom && 
-                        x >= contactBox.left && x <= contactBox.right)) {
-                        validPosition = true;
+                    if (!isOverlapping(x, y, actualWidth, sentenceLocations)) {
                         position = { x, y };
                     }
+                    attempts++;
                 }
-                
-                if (!position) {
-                    position = {
-                        x: Math.floor(Math.random() * (window.innerWidth - (cellsNeeded * CELL_WIDTH))),
-                        y: window.innerHeight - (Math.floor(Math.random() * 200) + 100)
-                    };
+
+                if (position) {
+                    sentenceLocations.push({
+                        element: sentenceEl,
+                        position: position,
+                        width: actualWidth,
+                        height: CELL_HEIGHT
+                    });
+                    
+                    sentenceEl.style.left = `${position.x}px`;
+                    sentenceEl.style.top = `${position.y}px`;
+                    sentenceEl.style.width = `${actualWidth}px`;
+                } else {
+                    document.body.removeChild(sentenceEl);
                 }
-                
-                // Store sentence location and element with exact width
-                sentenceLocations.push({
-                    element: sentenceEl,
-                    position: position,
-                    width: actualWidth,
-                    height: CELL_HEIGHT,
-                    cellsNeeded: cellsNeeded
-                });
-                
-                // Position element with exact width
-                sentenceEl.style.left = `${position.x}px`;
-                sentenceEl.style.top = `${position.y}px`;
-                sentenceEl.style.width = `${actualWidth}px`; // Use actual text width
             });
         } catch (error) {
             console.error('Error loading easter eggs:', error);
@@ -307,6 +379,57 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize sentences
     loadAndPlaceSentences();
+
+    // Add these functions after the clearSelection function
+    function moveSelection(direction) {
+        // If there was a range selection, reset to single cell
+        if (currentCell.x !== startCell.x || currentCell.y !== startCell.y) {
+            currentCell = startCell;
+            rangeHighlight.classList.remove('multiple-cells');
+        }
+
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // Calculate new position based on direction
+        let newX = currentCell.x;
+        let newY = currentCell.y;
+        
+        switch (direction) {
+            case 'ArrowLeft':
+                newX = Math.max(0, currentCell.x - CELL_WIDTH);
+                break;
+            case 'ArrowRight':
+                newX = Math.min(viewportWidth - CELL_WIDTH, currentCell.x + CELL_WIDTH);
+                break;
+            case 'ArrowUp':
+                newY = Math.max(0, currentCell.y - CELL_HEIGHT);
+                break;
+            case 'ArrowDown':
+                newY = Math.min(viewportHeight - CELL_HEIGHT, currentCell.y + CELL_HEIGHT);
+                break;
+        }
+        
+        // Only update if position changed
+        if (newX !== currentCell.x || newY !== currentCell.y) {
+            startCell = { x: newX, y: newY };
+            currentCell = { x: newX, y: newY };
+            updateSelection(true);
+        }
+    }
+
+    // Update the keydown event listener
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            clearSelection();
+            isSelecting = false;
+        } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+            e.preventDefault(); // Prevent page scrolling
+            if (cellHighlight.style.opacity !== '0') { // Only move if there's an active selection
+                moveSelection(e.key);
+            }
+        }
+    });
 });
 
 async function handleSubmit(event) {

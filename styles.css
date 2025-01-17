@@ -272,6 +272,16 @@ a:hover {
     .cursor-trail {
         display: none;
     }
+    
+    .grid-background {
+        touch-action: none;
+    }
+
+    .cell-highlight,
+    .range-highlight {
+        pointer-events: none;
+        -webkit-tap-highlight-color: transparent;
+    }
 }
 
 .cursor-trail {
