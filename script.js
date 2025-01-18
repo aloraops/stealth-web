@@ -358,14 +358,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 const maxAttempts = 100;
 
                 while (!position && attempts < maxAttempts) {
-                    const x = Math.floor(Math.random() * (viewportWidth - actualWidth) / CELL_WIDTH) * CELL_WIDTH;
-                    const y = Math.floor(Math.random() * (viewportHeight - CELL_HEIGHT) / CELL_HEIGHT) * CELL_HEIGHT;
+                    const safetyMargin = 20; // Margin from viewport edges
+                    const maxX = viewportWidth - actualWidth - safetyMargin;
+                    const maxY = viewportHeight - CELL_HEIGHT - safetyMargin;
+                    
+                    const x = Math.floor(Math.random() * (maxX - safetyMargin) / CELL_WIDTH) * CELL_WIDTH + safetyMargin;
+                    const y = Math.floor(Math.random() * (maxY - safetyMargin) / CELL_HEIGHT) * CELL_HEIGHT + safetyMargin;
                     
                     // Check if this position is in the text lines
                     const currentLine = Math.floor(y / CELL_HEIGHT);
                     if (currentLine >= textLines.startLine && currentLine <= textLines.endLine) {
                         attempts++;
-                        continue; // Skip this position
+                        continue;
                     }
                     
                     if (!isOverlapping(x, y, actualWidth, sentenceLocations)) {
@@ -457,8 +461,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function selectRandomCell() {
         if (!ENABLE_INITIAL_SELECTION) return;
         
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
+        const viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+        const viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
         const h1 = document.querySelector('.hero h1').getBoundingClientRect();
         const subtitle = document.querySelector('.hero .subtitle').getBoundingClientRect();
         const contactBox = document.querySelector('.contact-button').getBoundingClientRect();
@@ -467,9 +471,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const maxAttempts = 100;
         
         while (attempts < maxAttempts) {
-            // Calculate random position aligned to grid
-            const x = Math.floor(Math.random() * (viewportWidth / CELL_WIDTH)) * CELL_WIDTH;
-            const y = Math.floor(Math.random() * (viewportHeight / CELL_HEIGHT)) * CELL_HEIGHT;
+            // Calculate random position aligned to grid, with safety margin
+            const x = Math.floor(Math.random() * ((viewportWidth - CELL_WIDTH - 40) / CELL_WIDTH)) * CELL_WIDTH + 20;
+            const y = Math.floor(Math.random() * ((viewportHeight - CELL_HEIGHT - 40) / CELL_HEIGHT)) * CELL_HEIGHT + 20;
             
             // Check if position overlaps with text or contact box
             const overlapsText = y >= h1.top && y <= subtitle.bottom;
@@ -480,6 +484,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 startCell = { x, y };
                 currentCell = { x, y };
                 updateSelection(true);
+                // Force visibility on mobile
+                if (isMobile) {
+                    cellHighlight.style.opacity = '1';
+                    rangeHighlight.style.opacity = '1';
+                }
                 break;
             }
             
@@ -488,7 +497,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Call after sentences are initialized
-    loadAndPlaceSentences();
     selectRandomCell();
 });
 
