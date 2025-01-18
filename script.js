@@ -2,8 +2,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add feature flags and configuration at the top
     const ENABLE_CURSOR_TRAIL = false;
     const ENABLE_EASTER_EGGS = true;
-    const MIN_SENTENCES = 3;
-    const MAX_SENTENCES = 5;
+    const MOBILE_SENTENCES_COUNT = 3;
+    const DESKTOP_SENTENCES_COUNT = 5;
     const SENTENCE_MARGIN = 30;
     const CELL_WIDTH = 60;
     const CELL_HEIGHT = 25;
@@ -317,9 +317,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const yamlText = await response.text();
             const data = jsyaml.load(yamlText);
             
-            // Randomly select sentences
+            // Select fixed number of sentences based on device
             const shuffled = data.sentences.sort(() => 0.5 - Math.random());
-            const targetCount = Math.floor(Math.random() * (MAX_SENTENCES - MIN_SENTENCES + 1)) + MIN_SENTENCES;
+            const targetCount = isMobile ? MOBILE_SENTENCES_COUNT : DESKTOP_SENTENCES_COUNT;
             hiddenSentences = shuffled.slice(0, targetCount);
             
             // Create sentence elements
@@ -327,6 +327,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const viewportWidth = window.innerWidth;
             
             function isOverlapping(x, y, width, existingSentences) {
+                // Check logo overlap
+                const logo = document.querySelector('.logo').getBoundingClientRect();
+                if (!(y + CELL_HEIGHT + SENTENCE_MARGIN < logo.top || 
+                    y > logo.bottom + SENTENCE_MARGIN ||
+                    x + width + SENTENCE_MARGIN < logo.left || 
+                    x > logo.right + SENTENCE_MARGIN)) {
+                    return true;
+                }
+
+                // Check existing sentences overlap
                 for (const loc of existingSentences) {
                     if (!(y + CELL_HEIGHT + SENTENCE_MARGIN < loc.position.y || 
                         y > loc.position.y + loc.height + SENTENCE_MARGIN ||
@@ -472,12 +482,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const h1 = document.querySelector('.hero h1').getBoundingClientRect();
         const subtitle = document.querySelector('.hero .subtitle').getBoundingClientRect();
         const contactBox = document.querySelector('.contact-button').getBoundingClientRect();
+        const logo = document.querySelector('.logo').getBoundingClientRect();
         
         let attempts = 0;
         const maxAttempts = 100;
         
         while (attempts < maxAttempts) {
-            // Calculate random position strictly aligned to grid
             const maxCellsX = Math.floor((viewportWidth - CELL_WIDTH) / CELL_WIDTH);
             const maxCellsY = Math.floor((viewportHeight - CELL_HEIGHT) / CELL_HEIGHT);
             
@@ -487,16 +497,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const x = cellX * CELL_WIDTH;
             const y = cellY * CELL_HEIGHT;
             
-            // Check if position overlaps with text or contact box
+            // Check if position overlaps with text, contact box, or logo
             const overlapsText = y >= h1.top && y <= subtitle.bottom;
             const overlapsContact = y >= contactBox.top && y <= contactBox.bottom && 
                                   x >= contactBox.left && x <= contactBox.right;
+            const overlapsLogo = y >= logo.top && y <= logo.bottom && 
+                               x >= logo.left && x <= logo.right;
             
-            if (!overlapsText && !overlapsContact) {
+            if (!overlapsText && !overlapsContact && !overlapsLogo) {
                 startCell = { x, y };
                 currentCell = { x, y };
                 updateSelection(true);
-                // Force visibility on mobile
                 if (isMobile) {
                     cellHighlight.style.opacity = '1';
                     rangeHighlight.style.opacity = '1';
