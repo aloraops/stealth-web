@@ -471,9 +471,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const maxAttempts = 100;
         
         while (attempts < maxAttempts) {
-            // Calculate random position aligned to grid, with safety margin
-            const x = Math.floor(Math.random() * ((viewportWidth - CELL_WIDTH - 40) / CELL_WIDTH)) * CELL_WIDTH + 20;
-            const y = Math.floor(Math.random() * ((viewportHeight - CELL_HEIGHT - 40) / CELL_HEIGHT)) * CELL_HEIGHT + 20;
+            // Calculate random position strictly aligned to grid
+            const maxCellsX = Math.floor((viewportWidth - CELL_WIDTH) / CELL_WIDTH);
+            const maxCellsY = Math.floor((viewportHeight - CELL_HEIGHT) / CELL_HEIGHT);
+            
+            const cellX = Math.floor(Math.random() * maxCellsX);
+            const cellY = Math.floor(Math.random() * maxCellsY);
+            
+            const x = cellX * CELL_WIDTH;
+            const y = cellY * CELL_HEIGHT;
             
             // Check if position overlaps with text or contact box
             const overlapsText = y >= h1.top && y <= subtitle.bottom;
