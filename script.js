@@ -176,13 +176,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleSelectionStart(e) {
         if (e.target === gridBackground) {
             isSelecting = true;
-            // Get coordinates whether it's touch or mouse event
             startCell = getCellCoordinates(e);
             currentCell = startCell;
             rangeHighlight.classList.remove('selection-complete');
             updateSelection(false);
             
-            // Prevent default touch behavior and scrolling
             if (e.type === 'touchstart') {
                 e.preventDefault();
                 e.stopPropagation();
@@ -192,11 +190,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleSelectionMove(e) {
         if (isSelecting) {
-            // Get coordinates whether it's touch or mouse event
             currentCell = getCellCoordinates(e);
             updateSelection(false);
             
-            // Prevent default touch behavior and scrolling
             if (e.type === 'touchmove') {
                 e.preventDefault();
                 e.stopPropagation();
@@ -490,62 +486,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Call after initialization
     selectRandomCell();
 
-    // Modify the touch handling for mobile
-    let touchStartY = 0;
-    let isTouchScrolling = false;
-    const SCROLL_THRESHOLD = 50; // Pixels to trigger scroll behavior
-
-    function handleTouchStart(e) {
+    // Revert back to the original touch handlers
+    function handleSelectionStart(e) {
         if (e.target === gridBackground) {
-            touchStartY = e.touches[0].clientY;
-            isTouchScrolling = false;
-
-            // Start selection as normal
             isSelecting = true;
             startCell = getCellCoordinates(e);
             currentCell = startCell;
             rangeHighlight.classList.remove('selection-complete');
             updateSelection(false);
             
-            e.preventDefault();
-            e.stopPropagation();
+            if (e.type === 'touchstart') {
+                e.preventDefault();
+                e.stopPropagation();
+            }
         }
     }
 
-    function handleTouchMove(e) {
-        if (!isSelecting) return;
-
-        const touchCurrentY = e.touches[0].clientY;
-        const deltaY = touchCurrentY - touchStartY;
-
-        // Check if this is a vertical scroll
-        if (Math.abs(deltaY) > SCROLL_THRESHOLD && !isTouchScrolling) {
-            isTouchScrolling = true;
-            isSelecting = false;
-            clearSelection();
-            
-            // Trigger page refresh if scrolling down
-            if (deltaY > 0) {
-                window.location.reload();
-            }
-            return;
-        }
-
-        // If not scrolling, handle selection as normal
-        if (!isTouchScrolling) {
+    function handleSelectionMove(e) {
+        if (isSelecting) {
             currentCell = getCellCoordinates(e);
             updateSelection(false);
-            e.preventDefault();
-            e.stopPropagation();
+            
+            if (e.type === 'touchmove') {
+                e.preventDefault();
+                e.stopPropagation();
+            }
         }
     }
 
-    // Update event listeners
-    gridBackground.removeEventListener('touchstart', handleSelectionStart);
-    gridBackground.removeEventListener('touchmove', handleSelectionMove);
-    
-    gridBackground.addEventListener('touchstart', handleTouchStart, { passive: false });
-    gridBackground.addEventListener('touchmove', handleTouchMove, { passive: false });
+    // Remove the custom touch event listeners and revert to original ones
+    gridBackground.addEventListener('touchstart', handleSelectionStart, { passive: false });
+    gridBackground.addEventListener('touchmove', handleSelectionMove, { passive: false });
 });
 
 async function handleSubmit(event) {
