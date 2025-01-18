@@ -176,11 +176,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleSelectionStart(e) {
         if (e.target === gridBackground) {
             isSelecting = true;
+            // Get coordinates whether it's touch or mouse event
             startCell = getCellCoordinates(e);
             currentCell = startCell;
             rangeHighlight.classList.remove('selection-complete');
             updateSelection(false);
             
+            // Prevent default touch behavior and scrolling
             if (e.type === 'touchstart') {
                 e.preventDefault();
                 e.stopPropagation();
@@ -190,9 +192,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleSelectionMove(e) {
         if (isSelecting) {
+            // Get coordinates whether it's touch or mouse event
             currentCell = getCellCoordinates(e);
             updateSelection(false);
             
+            // Prevent default touch behavior and scrolling
             if (e.type === 'touchmove') {
                 e.preventDefault();
                 e.stopPropagation();
@@ -449,13 +453,13 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.reload();
     });
 
-    // Add function to randomly select a cell
+    // Add after loadAndPlaceSentences initialization
     function selectRandomCell() {
         if (!ENABLE_INITIAL_SELECTION) return;
         
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const hero = document.querySelector('.hero h1').getBoundingClientRect();
+        const h1 = document.querySelector('.hero h1').getBoundingClientRect();
         const subtitle = document.querySelector('.hero .subtitle').getBoundingClientRect();
         const contactBox = document.querySelector('.contact-button').getBoundingClientRect();
         
@@ -468,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const y = Math.floor(Math.random() * (viewportHeight / CELL_HEIGHT)) * CELL_HEIGHT;
             
             // Check if position overlaps with text or contact box
-            const overlapsText = y >= hero.top && y <= subtitle.bottom;
+            const overlapsText = y >= h1.top && y <= subtitle.bottom;
             const overlapsContact = y >= contactBox.top && y <= contactBox.bottom && 
                                   x >= contactBox.left && x <= contactBox.right;
             
@@ -483,40 +487,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Call after initialization
+    // Call after sentences are initialized
+    loadAndPlaceSentences();
     selectRandomCell();
-
-    // Revert back to the original touch handlers
-    function handleSelectionStart(e) {
-        if (e.target === gridBackground) {
-            isSelecting = true;
-            startCell = getCellCoordinates(e);
-            currentCell = startCell;
-            rangeHighlight.classList.remove('selection-complete');
-            updateSelection(false);
-            
-            if (e.type === 'touchstart') {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        }
-    }
-
-    function handleSelectionMove(e) {
-        if (isSelecting) {
-            currentCell = getCellCoordinates(e);
-            updateSelection(false);
-            
-            if (e.type === 'touchmove') {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        }
-    }
-
-    // Remove the custom touch event listeners and revert to original ones
-    gridBackground.addEventListener('touchstart', handleSelectionStart, { passive: false });
-    gridBackground.addEventListener('touchmove', handleSelectionMove, { passive: false });
 });
 
 async function handleSubmit(event) {
