@@ -358,12 +358,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const maxAttempts = 100;
 
                 while (!position && attempts < maxAttempts) {
-                    const safetyMargin = 20; // Margin from viewport edges
+                    const safetyMargin = 20;
                     const maxX = viewportWidth - actualWidth - safetyMargin;
                     const maxY = viewportHeight - CELL_HEIGHT - safetyMargin;
                     
-                    const x = Math.floor(Math.random() * (maxX - safetyMargin) / CELL_WIDTH) * CELL_WIDTH + safetyMargin;
-                    const y = Math.floor(Math.random() * (maxY - safetyMargin) / CELL_HEIGHT) * CELL_HEIGHT + safetyMargin;
+                    // Align to grid
+                    const x = Math.floor((Math.random() * (maxX - safetyMargin)) / CELL_WIDTH) * CELL_WIDTH;
+                    const y = Math.floor((Math.random() * (maxY - safetyMargin)) / CELL_HEIGHT) * CELL_HEIGHT;
                     
                     // Check if this position is in the text lines
                     const currentLine = Math.floor(y / CELL_HEIGHT);
@@ -379,9 +380,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 if (position) {
+                    // Ensure the element is positioned exactly on the grid
                     sentenceLocations.push({
                         element: sentenceEl,
-                        position: position,
+                        position: {
+                            x: Math.floor(position.x / CELL_WIDTH) * CELL_WIDTH,
+                            y: Math.floor(position.y / CELL_HEIGHT) * CELL_HEIGHT
+                        },
                         width: actualWidth,
                         height: CELL_HEIGHT
                     });
@@ -389,6 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     sentenceEl.style.left = `${position.x}px`;
                     sentenceEl.style.top = `${position.y}px`;
                     sentenceEl.style.width = `${actualWidth}px`;
+                    sentenceEl.style.height = `${CELL_HEIGHT}px`; // Ensure height matches cell height
                 } else {
                     document.body.removeChild(sentenceEl);
                 }
