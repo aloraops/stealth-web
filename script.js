@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const SENTENCE_MARGIN = 30;
     const CELL_WIDTH = 60;
     const CELL_HEIGHT = 25;
+    const ENABLE_INITIAL_SELECTION = true; // Toggle initial cell selection
 
     // Calculate text lines to avoid
     function getTextLines() {
@@ -451,6 +452,100 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('.refresh-icon').addEventListener('click', () => {
         window.location.reload();
     });
+
+    // Add function to randomly select a cell
+    function selectRandomCell() {
+        if (!ENABLE_INITIAL_SELECTION) return;
+        
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const hero = document.querySelector('.hero h1').getBoundingClientRect();
+        const subtitle = document.querySelector('.hero .subtitle').getBoundingClientRect();
+        const contactBox = document.querySelector('.contact-button').getBoundingClientRect();
+        
+        let attempts = 0;
+        const maxAttempts = 100;
+        
+        while (attempts < maxAttempts) {
+            // Calculate random position aligned to grid
+            const x = Math.floor(Math.random() * (viewportWidth / CELL_WIDTH)) * CELL_WIDTH;
+            const y = Math.floor(Math.random() * (viewportHeight / CELL_HEIGHT)) * CELL_HEIGHT;
+            
+            // Check if position overlaps with text or contact box
+            const overlapsText = y >= hero.top && y <= subtitle.bottom;
+            const overlapsContact = y >= contactBox.top && y <= contactBox.bottom && 
+                                  x >= contactBox.left && x <= contactBox.right;
+            
+            if (!overlapsText && !overlapsContact) {
+                startCell = { x, y };
+                currentCell = { x, y };
+                updateSelection(true);
+                break;
+            }
+            
+            attempts++;
+        }
+    }
+
+    // Call after initialization
+    selectRandomCell();
+
+    // Modify the touch handling for mobile
+    let touchStartY = 0;
+    let isTouchScrolling = false;
+    const SCROLL_THRESHOLD = 50; // Pixels to trigger scroll behavior
+
+    function handleTouchStart(e) {
+        if (e.target === gridBackground) {
+            touchStartY = e.touches[0].clientY;
+            isTouchScrolling = false;
+
+            // Start selection as normal
+            isSelecting = true;
+            startCell = getCellCoordinates(e);
+            currentCell = startCell;
+            rangeHighlight.classList.remove('selection-complete');
+            updateSelection(false);
+            
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+
+    function handleTouchMove(e) {
+        if (!isSelecting) return;
+
+        const touchCurrentY = e.touches[0].clientY;
+        const deltaY = touchCurrentY - touchStartY;
+
+        // Check if this is a vertical scroll
+        if (Math.abs(deltaY) > SCROLL_THRESHOLD && !isTouchScrolling) {
+            isTouchScrolling = true;
+            isSelecting = false;
+            clearSelection();
+            
+            // Trigger page refresh if scrolling down
+            if (deltaY > 0) {
+                window.location.reload();
+            }
+            return;
+        }
+
+        // If not scrolling, handle selection as normal
+        if (!isTouchScrolling) {
+            currentCell = getCellCoordinates(e);
+            updateSelection(false);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+
+    // Update event listeners
+    gridBackground.removeEventListener('touchstart', handleSelectionStart);
+    gridBackground.removeEventListener('touchmove', handleSelectionMove);
+    
+    gridBackground.addEventListener('touchstart', handleTouchStart, { passive: false });
+    gridBackground.addEventListener('touchmove', handleTouchMove, { passive: false });
 });
 
 async function handleSubmit(event) {
